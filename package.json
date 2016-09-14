@@ -15,10 +15,20 @@
     ],
     "main": "./out/src/extension",
     "contributes": {
-        "commands": [{
-            "command": "extension.centerEditorWindow",
-            "title": "Center Editor Window"
-        }]
+        "commands": [
+            {
+                "command": "extension.centerEditorWindow",
+                "title": "Center Editor Window"
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "extension.centerEditorWindow",
+                "key": "ctrl+l",
+                "mac": "ctrl+l",
+                "when": "editorTextFocus"
+            }
+        ]
     },
     "scripts": {
         "vscode:prepublish": "node ./node_modules/vscode/bin/compile",
