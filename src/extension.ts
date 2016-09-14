@@ -18,7 +18,12 @@ export function activate(context: vscode.ExtensionContext) {
         // The code you place here will be executed every time your command is executed
 
         // Display a message box to the user
-        vscode.window.showInformationMessage('Centering editor window now!');
+
+        const editor = vscode.window.activeTextEditor;
+        const selection = editor.selection;
+        const range = new vscode.Range(selection.start, selection.end);
+        editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+
     });
 
     context.subscriptions.push(disposable);
