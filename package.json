@@ -1,7 +1,7 @@
 {
     "name": "center-editor-window",
     "displayName": "Center Editor Window",
-    "description": "Does exactly what the title suggests",
+    "description": "Centers your editor window at the current cursor position",
     "version": "0.0.1",
     "publisher": "kaiwood",
     "engines": {
