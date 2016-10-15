@@ -6,6 +6,10 @@ This extension centers your editor window at the current cursor position. Defaul
 
 ## Release Notes
 
+### 2.0.2
+
+Use looping gif for description
+
 ### 2.0.1
 
 Polishing release adding more metadata and images.
