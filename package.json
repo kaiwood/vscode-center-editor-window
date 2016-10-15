@@ -4,6 +4,13 @@
     "description": "Centers your editor window at the current cursor position",
     "version": "1.0.0",
     "publisher": "kaiwood",
+    "icon": "images/vscode-center-editor-window-icon.png",
+    "bugs": "https://github.com/kaiwood/vscode-center-editor-window/issues",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/kaiwood/vscode-center-editor-window"
+    },
     "engines": {
         "vscode": "^1.4.0"
     },
