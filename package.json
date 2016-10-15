@@ -11,19 +11,19 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:extension.centerEditorWindow"
+        "onCommand:center-editor-window.center"
     ],
     "main": "./out/src/extension",
     "contributes": {
         "commands": [
             {
-                "command": "extension.centerEditorWindow",
+                "command": "center-editor-window.center",
                 "title": "Center Editor Window"
             }
         ],
         "keybindings": [
             {
-                "command": "extension.centerEditorWindow",
+                "command": "center-editor-window.center",
                 "key": "ctrl+l",
                 "mac": "ctrl+l",
                 "when": "editorTextFocus"
