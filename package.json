@@ -14,8 +14,12 @@
   "engines": {
     "vscode": "^1.19.0"
   },
-  "categories": ["Other"],
-  "activationEvents": ["onCommand:center-editor-window.center"],
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:center-editor-window.center"
+  ],
   "main": "./out/src/extension",
   "contributes": {
     "commands": [
