@@ -14,12 +14,8 @@
   "engines": {
     "vscode": "^1.19.0"
   },
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onCommand:center-editor-window.center"
-  ],
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:center-editor-window.center"],
   "main": "./out/src/extension",
   "contributes": {
     "commands": [
@@ -34,6 +30,18 @@
         "key": "ctrl+l",
         "mac": "ctrl+l",
         "when": "editorTextFocus"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "Center Editor Window configuration",
+        "properties": {
+          "center-editor-window.threeStateToggle": {
+            "type": "boolean",
+            "default": false,
+            "description": "Toggle between line center/top/bottom."
+          }
+        }
       }
     ]
   },

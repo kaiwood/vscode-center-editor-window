@@ -1,27 +1,74 @@
 "use strict";
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with  registerCommand
-  // The commandId parameter must match the command field in package.json
+  let state = "center";
+  let timeout;
+
+  function reset() {
+    if (timeout) clearTimeout(timeout);
+
+    timeout = setTimeout(() => {
+      state = "center";
+    }, 1000);
+  }
+
   let disposable = vscode.commands.registerCommand(
     "center-editor-window.center",
     () => {
-      // The code you place here will be executed every time your command is executed
-      const editor = vscode.window.activeTextEditor;
-      const selection = editor.selection;
-      const range = new vscode.Range(selection.start, selection.end);
-      editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+      if (
+        vscode.workspace
+          .getConfiguration("center-editor-window")
+          .get("threeStateToggle")
+      ) {
+        switch (state) {
+          case "center":
+            toCenter();
+            state = "top";
+            reset();
+            break;
+          case "top":
+            toTop();
+            state = "bottom";
+            reset();
+            break;
+          case "bottom":
+            toBottom();
+            state = "center";
+            reset();
+            break;
+        }
+      } else {
+        toCenter();
+      }
     }
   );
 
   context.subscriptions.push(disposable);
 }
 
-// this method is called when your extension is deactivated
+async function toCenter() {
+  let currentLineNumber = vscode.window.activeTextEditor.selection.start.line;
+  await vscode.commands.executeCommand("revealLine", {
+    lineNumber: currentLineNumber,
+    at: "center"
+  });
+}
+
+async function toTop() {
+  let currentLineNumber = vscode.window.activeTextEditor.selection.start.line;
+  await vscode.commands.executeCommand("revealLine", {
+    lineNumber: currentLineNumber,
+    at: "top"
+  });
+}
+
+async function toBottom() {
+  let currentLineNumber = vscode.window.activeTextEditor.selection.start.line;
+  await vscode.commands.executeCommand("revealLine", {
+    lineNumber: currentLineNumber,
+    at: "bottom"
+  });
+}
+
 export function deactivate() {}
