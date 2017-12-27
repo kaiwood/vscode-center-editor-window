@@ -1,5 +1,9 @@
 # Release Notes
 
+## 2.1.0
+
+Additional setting `center-editor-window.threeStateToggle: true/false` to enable toggling between centering the current line center, moving it to the top of the viewport and moving it to the bottom.
+
 ## 2.0.2
 
 Use looping gif for description
