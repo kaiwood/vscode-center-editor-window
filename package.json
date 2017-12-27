@@ -2,7 +2,7 @@
   "name": "center-editor-window",
   "displayName": "Center Editor Window",
   "description": "Centers your editor window at the current cursor position",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "publisher": "kaiwood",
   "icon": "images/vscode-center-editor-window-icon.png",
   "bugs": "https://github.com/kaiwood/vscode-center-editor-window/issues",
@@ -14,12 +14,8 @@
   "engines": {
     "vscode": "^1.19.0"
   },
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onCommand:center-editor-window.center"
-  ],
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:center-editor-window.center"],
   "main": "./out/src/extension",
   "contributes": {
     "commands": [
