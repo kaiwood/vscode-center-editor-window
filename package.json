@@ -16,7 +16,7 @@
   },
   "categories": ["Other"],
   "activationEvents": ["onCommand:center-editor-window.center"],
-  "main": "./out/src/extension",
+  "main": "./out/extension",
   "contributes": {
     "commands": [
       {
@@ -40,6 +40,11 @@
             "type": "boolean",
             "default": false,
             "description": "Toggle between line center/top/bottom."
+          },
+          "center-editor-window.offset": {
+            "type": "integer",
+            "default": "0",
+            "description": "Offset from the bottom when centering. A negative number will move the current line lower than the center."
           }
         }
       }
