@@ -29,7 +29,7 @@
         "command": "center-editor-window.center",
         "key": "ctrl+l",
         "mac": "ctrl+l",
-        "when": "editorTextFocus"
+        "when": "editorTextFocus || findWidgetVisible"
       }
     ],
     "configuration": [
