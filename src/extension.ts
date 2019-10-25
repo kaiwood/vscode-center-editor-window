@@ -13,6 +13,11 @@ export function activate(context: vscode.ExtensionContext) {
     }, 1000);
   }
 
+  vscode.window.onDidChangeActiveTextEditor(() => {
+    clearTimeout(timeout);
+    state = "center";
+  });
+
   let disposable = vscode.commands.registerCommand(
     "center-editor-window.center",
     () => {
@@ -49,7 +54,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 async function toCenter() {
   let currentLineNumber = vscode.window.activeTextEditor.selection.start.line;
-  let offset = +vscode.workspace.getConfiguration("center-editor-window").get("offset");
+  let offset = +vscode.workspace
+    .getConfiguration("center-editor-window")
+    .get("offset");
   await vscode.commands.executeCommand("revealLine", {
     lineNumber: currentLineNumber + offset,
     at: "center"
