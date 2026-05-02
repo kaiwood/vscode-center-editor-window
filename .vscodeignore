@@ -1,9 +1,12 @@
 .vscode/**
 typings/**
-out/test/**
-test/**
+.vscode-test.mjs
+out/**
+src/test/**
 src/**
 **/*.map
 .gitignore
 tsconfig.json
+esbuild.js
+scripts/**
 vsc-extension-quickstart.md

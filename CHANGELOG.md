@@ -1,5 +1,12 @@
 # Release Notes
 
+## Unreleased
+
+- Modernize the extension build, test, and packaging tooling.
+- Bundle the extension runtime with esbuild.
+- Add VS Code extension integration tests.
+- Raise the minimum VS Code version to 1.74.
+
 ## 2.3.0
 
 Cancel timeout for the 3-state toggle when the active editor changes

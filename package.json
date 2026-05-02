@@ -12,15 +12,12 @@
     "url": "https://github.com/kaiwood/vscode-center-editor-window"
   },
   "engines": {
-    "vscode": "^1.19.0"
+    "vscode": "^1.74.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:center-editor-window.center"
-  ],
-  "main": "./out/extension",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -47,7 +44,7 @@
           },
           "center-editor-window.offset": {
             "type": "integer",
-            "default": "0",
+            "default": 0,
             "description": "Offset from the bottom when centering. A negative number will move the current line lower than the center."
           }
         }
@@ -55,14 +52,25 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "postinstall": "node ./node_modules/vscode/bin/install"
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && node esbuild.js",
+    "check-types": "tsc --noEmit --project tsconfig.json",
+    "compile-tests": "tsc --project tsconfig.json",
+    "watch": "node scripts/watch.js",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && node esbuild.js --production",
+    "test": "npm run compile && npm run compile-tests && vscode-test",
+    "vsce:package": "vsce package"
   },
   "devDependencies": {
-    "typescript": "^3.6.3",
-    "vscode": "^1.1.36",
-    "@types/node": "^12.7.8"
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.19.39",
+    "@types/vscode": "1.74.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "3.9.2-1",
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3"
   }
 }

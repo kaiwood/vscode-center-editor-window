@@ -1,26 +1,33 @@
-"use strict";
 import * as vscode from "vscode";
 
+type ToggleState = "center" | "top" | "bottom";
+
 export function activate(context: vscode.ExtensionContext) {
-  let state = "center";
-  let timeout;
+  let state: ToggleState = "center";
+  let timeout: NodeJS.Timeout | undefined;
 
   function reset() {
-    if (timeout) clearTimeout(timeout);
+    if (timeout) {
+      clearTimeout(timeout);
+    }
 
     timeout = setTimeout(() => {
       state = "center";
     }, 1000);
   }
 
-  vscode.window.onDidChangeActiveTextEditor(() => {
-    clearTimeout(timeout);
-    state = "center";
-  });
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(() => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+      state = "center";
+    })
+  );
 
-  let disposable = vscode.commands.registerCommand(
+  const disposable = vscode.commands.registerCommand(
     "center-editor-window.center",
-    () => {
+    async () => {
       if (
         vscode.workspace
           .getConfiguration("center-editor-window")
@@ -28,23 +35,23 @@ export function activate(context: vscode.ExtensionContext) {
       ) {
         switch (state) {
           case "center":
-            toCenter();
+            await toCenter();
             state = "top";
             reset();
             break;
           case "top":
-            toTop();
+            await toTop();
             state = "bottom";
             reset();
             break;
           case "bottom":
-            toBottom();
+            await toBottom();
             state = "center";
             reset();
             break;
         }
       } else {
-        toCenter();
+        await toCenter();
       }
     }
   );
@@ -53,10 +60,14 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 async function toCenter() {
-  let currentLineNumber = vscode.window.activeTextEditor.selection.start.line;
-  let offset = +vscode.workspace
+  const currentLineNumber = getCurrentLineNumber();
+  if (currentLineNumber === undefined) {
+    return;
+  }
+
+  const offset = vscode.workspace
     .getConfiguration("center-editor-window")
-    .get("offset");
+    .get<number>("offset", 0);
   await vscode.commands.executeCommand("revealLine", {
     lineNumber: currentLineNumber + offset,
     at: "center"
@@ -64,7 +75,11 @@ async function toCenter() {
 }
 
 async function toTop() {
-  let currentLineNumber = vscode.window.activeTextEditor.selection.start.line;
+  const currentLineNumber = getCurrentLineNumber();
+  if (currentLineNumber === undefined) {
+    return;
+  }
+
   await vscode.commands.executeCommand("revealLine", {
     lineNumber: currentLineNumber,
     at: "top"
@@ -72,11 +87,19 @@ async function toTop() {
 }
 
 async function toBottom() {
-  let currentLineNumber = vscode.window.activeTextEditor.selection.start.line;
+  const currentLineNumber = getCurrentLineNumber();
+  if (currentLineNumber === undefined) {
+    return;
+  }
+
   await vscode.commands.executeCommand("revealLine", {
     lineNumber: currentLineNumber,
     at: "bottom"
   });
+}
+
+function getCurrentLineNumber(): number | undefined {
+  return vscode.window.activeTextEditor?.selection.start.line;
 }
 
 export function deactivate() {}
