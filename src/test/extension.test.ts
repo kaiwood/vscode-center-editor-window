@@ -1,6 +1,10 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
 
+const COMMAND = "center-editor-window.center";
+const LINE_COUNT = 300;
+const CURSOR_LINE = 240;
+
 suite("Center Editor Window extension", () => {
   test("activates successfully", async () => {
     const extension = vscode.extensions.getExtension("kaiwood.center-editor-window");
@@ -17,27 +21,62 @@ suite("Center Editor Window extension", () => {
   test("registers the center command", async () => {
     const commands = await vscode.commands.getCommands(true);
 
-    assert.ok(commands.includes("center-editor-window.center"));
+    assert.ok(commands.includes(COMMAND));
   });
 
-  test("runs the center command with an active editor", async () => {
-    const document = await vscode.workspace.openTextDocument({
-      content: ["first", "second", "third"].join("\n"),
-      language: "plaintext"
-    });
+  test("centers the current line in the viewport", async () => {
+    const editor = await openLongDocumentAtLine(CURSOR_LINE);
 
-    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand(COMMAND);
+    await waitForVisibleRange(editor, (range) =>
+      isLineNearViewportCenter(range, CURSOR_LINE)
+    );
 
-    await assert.doesNotReject(async () => {
-      await vscode.commands.executeCommand("center-editor-window.center");
-    });
+    assertLineNearViewportCenter(editor, CURSOR_LINE);
+  });
+
+  test("moves the current line through center, top, and bottom when three-state toggle is enabled", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousThreeStateToggle = config.get<boolean>("threeStateToggle");
+    const previousOffset = config.get<number>("offset");
+    const editor = await openLongDocumentAtLine(CURSOR_LINE);
+
+    try {
+      await config.update("threeStateToggle", true, vscode.ConfigurationTarget.Global);
+      await config.update("offset", 0, vscode.ConfigurationTarget.Global);
+
+      await vscode.commands.executeCommand(COMMAND);
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportCenter(range, CURSOR_LINE)
+      );
+      assertLineNearViewportCenter(editor, CURSOR_LINE);
+
+      await vscode.commands.executeCommand(COMMAND);
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportTop(range, CURSOR_LINE)
+      );
+      assertLineNearViewportTop(editor, CURSOR_LINE);
+
+      await vscode.commands.executeCommand(COMMAND);
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportBottom(range, CURSOR_LINE)
+      );
+      assertLineNearViewportBottom(editor, CURSOR_LINE);
+    } finally {
+      await config.update(
+        "threeStateToggle",
+        previousThreeStateToggle,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
   });
 
   test("does not throw without an active editor", async () => {
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
 
     await assert.doesNotReject(async () => {
-      await vscode.commands.executeCommand("center-editor-window.center");
+      await vscode.commands.executeCommand(COMMAND);
     });
   });
 
@@ -48,3 +87,104 @@ suite("Center Editor Window extension", () => {
     assert.strictEqual(config.get<number>("offset"), 0);
   });
 });
+
+async function openLongDocumentAtLine(line: number): Promise<vscode.TextEditor> {
+  const document = await vscode.workspace.openTextDocument({
+    content: Array.from({ length: LINE_COUNT }, (_, index) => `Line ${index + 1}`).join(
+      "\n"
+    ),
+    language: "plaintext"
+  });
+
+  const editor = await vscode.window.showTextDocument(document);
+  const position = new vscode.Position(line, 0);
+  editor.selection = new vscode.Selection(position, position);
+  editor.revealRange(new vscode.Range(0, 0, 0, 0), vscode.TextEditorRevealType.AtTop);
+
+  return editor;
+}
+
+async function waitForVisibleRange(
+  editor: vscode.TextEditor,
+  predicate: (range: vscode.Range) => boolean
+): Promise<void> {
+  const timeoutMs = 2000;
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const range = editor.visibleRanges[0];
+    if (range && predicate(range)) {
+      return;
+    }
+
+    await sleep(50);
+  }
+}
+
+function assertLineNearViewportCenter(editor: vscode.TextEditor, line: number): void {
+  const range = getVisibleRange(editor);
+
+  assert.ok(
+    isLineNearViewportCenter(range, line),
+    `Expected line ${line} near viewport center, but visible range was ${formatRange(
+      range
+    )}.`
+  );
+}
+
+function assertLineNearViewportTop(editor: vscode.TextEditor, line: number): void {
+  const range = getVisibleRange(editor);
+
+  assert.ok(
+    isLineNearViewportTop(range, line),
+    `Expected line ${line} near viewport top, but visible range was ${formatRange(range)}.`
+  );
+}
+
+function assertLineNearViewportBottom(editor: vscode.TextEditor, line: number): void {
+  const range = getVisibleRange(editor);
+
+  assert.ok(
+    isLineNearViewportBottom(range, line),
+    `Expected line ${line} near viewport bottom, but visible range was ${formatRange(
+      range
+    )}.`
+  );
+}
+
+function isLineNearViewportCenter(range: vscode.Range, line: number): boolean {
+  const centerLine = range.start.line + viewportLineCount(range) / 2;
+
+  return Math.abs(line - centerLine) <= tolerance(range);
+}
+
+function isLineNearViewportTop(range: vscode.Range, line: number): boolean {
+  return line >= range.start.line && line - range.start.line <= tolerance(range);
+}
+
+function isLineNearViewportBottom(range: vscode.Range, line: number): boolean {
+  return line <= range.end.line && range.end.line - line <= tolerance(range);
+}
+
+function getVisibleRange(editor: vscode.TextEditor): vscode.Range {
+  const range = editor.visibleRanges[0];
+  assert.ok(range, "Expected the editor to expose a visible range.");
+
+  return range;
+}
+
+function viewportLineCount(range: vscode.Range): number {
+  return range.end.line - range.start.line;
+}
+
+function tolerance(range: vscode.Range): number {
+  return Math.max(2, Math.ceil(viewportLineCount(range) * 0.15));
+}
+
+function formatRange(range: vscode.Range): string {
+  return `${range.start.line}-${range.end.line}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
