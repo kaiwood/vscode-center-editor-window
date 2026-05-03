@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 3.0.0
 
 - Modernize the extension build, test, and packaging tooling.
 - Bundle the extension runtime with esbuild.
