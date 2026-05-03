@@ -1,4 +1,6 @@
 import * as assert from "assert";
+import * as fs from "fs";
+import * as path from "path";
 import * as vscode from "vscode";
 
 const COMMAND = "center-editor-window.center";
@@ -23,6 +25,14 @@ suite("Center Editor Window extension", () => {
     const commands = await vscode.commands.getCommands(true);
 
     assert.ok(commands.includes(COMMAND));
+  });
+
+  test("activates after startup so background settings can listen to editor events", () => {
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(__dirname, "..", "..", "package.json"), "utf8")
+    ) as { activationEvents?: string[] };
+
+    assert.ok(packageJson.activationEvents?.includes("onStartupFinished"));
   });
 
   test("centers the current line in the viewport", async () => {
@@ -227,6 +237,134 @@ suite("Center Editor Window extension", () => {
     }
   });
 
+  test("does not center undo changes when center on undo/redo is disabled", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousCenterOnUndoRedo = config.get<boolean>("centerOnUndoRedo");
+    const previousOffset = config.get<number>("offset");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
+
+    try {
+      await config.update(
+        "centerOnUndoRedo",
+        false,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        "typewriterScrollMode",
+        false,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", 0, vscode.ConfigurationTarget.Global);
+
+      await insertTextAtCursor(editor, "changed ");
+      revealLineAtTop(editor, CURSOR_LINE - 4);
+      await vscode.commands.executeCommand("undo");
+      await sleep(250);
+
+      assertLineNotNearViewportCenter(editor, CURSOR_LINE);
+    } finally {
+      await config.update(
+        "centerOnUndoRedo",
+        previousCenterOnUndoRedo,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test("centers undo changes when center on undo/redo is enabled", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousCenterOnUndoRedo = config.get<boolean>("centerOnUndoRedo");
+    const previousOffset = config.get<number>("offset");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
+
+    try {
+      await config.update(
+        "centerOnUndoRedo",
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        "typewriterScrollMode",
+        false,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", 0, vscode.ConfigurationTarget.Global);
+
+      await insertTextAtCursor(editor, "changed ");
+      revealLineAtTop(editor, CURSOR_LINE - 4);
+      await vscode.commands.executeCommand("undo");
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportCenter(range, CURSOR_LINE)
+      );
+
+      assertLineNearViewportCenter(editor, CURSOR_LINE);
+    } finally {
+      await config.update(
+        "centerOnUndoRedo",
+        previousCenterOnUndoRedo,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test("centers redo changes when center on undo/redo is enabled", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousCenterOnUndoRedo = config.get<boolean>("centerOnUndoRedo");
+    const previousOffset = config.get<number>("offset");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
+
+    try {
+      await config.update(
+        "centerOnUndoRedo",
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        "typewriterScrollMode",
+        false,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", 0, vscode.ConfigurationTarget.Global);
+
+      await insertTextAtCursor(editor, "changed ");
+      await vscode.commands.executeCommand("undo");
+      revealLineAtTop(editor, CURSOR_LINE - 4);
+      await vscode.commands.executeCommand("redo");
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportCenter(range, CURSOR_LINE)
+      );
+
+      assertLineNearViewportCenter(editor, CURSOR_LINE);
+    } finally {
+      await config.update(
+        "centerOnUndoRedo",
+        previousCenterOnUndoRedo,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test("does not throw without an active editor", async () => {
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
 
@@ -241,6 +379,7 @@ suite("Center Editor Window extension", () => {
     assert.strictEqual(config.get<boolean>("threeStateToggle"), false);
     assert.strictEqual(config.get<number>("offset"), 0);
     assert.strictEqual(config.get<boolean>("typewriterScrollMode"), false);
+    assert.strictEqual(config.get<boolean>("centerOnUndoRedo"), false);
   });
 });
 
@@ -276,6 +415,24 @@ async function openLongDocumentAtPosition(
   );
 
   return editor;
+}
+
+async function insertTextAtCursor(
+  editor: vscode.TextEditor,
+  text: string
+): Promise<void> {
+  const didEdit = await editor.edit((edit) => {
+    edit.insert(editor.selection.active, text);
+  });
+
+  assert.strictEqual(didEdit, true);
+}
+
+function revealLineAtTop(editor: vscode.TextEditor, line: number): void {
+  editor.revealRange(
+    new vscode.Range(line, 0, line, 0),
+    vscode.TextEditorRevealType.AtTop
+  );
 }
 
 async function waitForVisibleRange(

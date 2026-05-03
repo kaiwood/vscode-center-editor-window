@@ -35,6 +35,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeTextEditorSelection(maybeCenterTypewriterSelection)
   );
 
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument(maybeCenterUndoRedoChange)
+  );
+
   const disposable = vscode.commands.registerCommand(
     "center-editor-window.center",
     async () => {
@@ -67,6 +71,28 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(disposable);
+}
+
+function maybeCenterUndoRedoChange(event: vscode.TextDocumentChangeEvent): void {
+  const editor = vscode.window.activeTextEditor;
+
+  if (
+    !editor ||
+    event.document !== editor.document ||
+    (event.reason !== vscode.TextDocumentChangeReason.Undo &&
+      event.reason !== vscode.TextDocumentChangeReason.Redo) ||
+    !vscode.workspace
+      .getConfiguration("center-editor-window")
+      .get("centerOnUndoRedo")
+  ) {
+    return;
+  }
+
+  centerLineInEditor(
+    editor,
+    editor.selection.active.line,
+    editor.selection.active.character
+  );
 }
 
 function maybeCenterTypewriterSelection(

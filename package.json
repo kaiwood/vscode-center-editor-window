@@ -18,6 +18,9 @@
     "Other"
   ],
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
@@ -51,6 +54,11 @@
             "type": "boolean",
             "default": false,
             "description": "Keep the current line centered whenever the cursor changes lines."
+          },
+          "center-editor-window.centerOnUndoRedo": {
+            "type": "boolean",
+            "default": false,
+            "description": "Keep the current line centered after undo or redo."
           }
         }
       }
