@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 type ToggleState = "center" | "top" | "bottom";
 
 const typewriterLineByEditor = new WeakMap<vscode.TextEditor, number>();
+const HORIZONTAL_CENTER_PADDING_COLUMNS = 120;
 
 export function activate(context: vscode.ExtensionContext) {
   let state: ToggleState = "center";
@@ -86,12 +87,16 @@ function maybeCenterTypewriterSelection(
   }
 
   typewriterLineByEditor.set(event.textEditor, activeLine);
-  centerLineInEditor(event.textEditor, activeLine);
+  centerLineInEditor(
+    event.textEditor,
+    activeLine,
+    event.selections[0].active.character
+  );
 }
 
 async function toCenter() {
-  const currentLineNumber = getCurrentLineNumber();
-  if (currentLineNumber === undefined) {
+  const currentPosition = getCurrentPosition();
+  if (!currentPosition) {
     return;
   }
 
@@ -100,20 +105,23 @@ async function toCenter() {
     return;
   }
 
-  centerLineInEditor(editor, currentLineNumber);
+  centerLineInEditor(editor, currentPosition.line, currentPosition.character);
 }
 
-function centerLineInEditor(editor: vscode.TextEditor, line: number): void {
+function centerLineInEditor(
+  editor: vscode.TextEditor,
+  line: number,
+  character: number
+): void {
   const offset = vscode.workspace
     .getConfiguration("center-editor-window")
     .get<number>("offset", 0);
   const targetLine = clampLine(line + offset, editor.document.lineCount);
-  const position = new vscode.Position(targetLine, 0);
+  const targetLineLength = editor.document.lineAt(targetLine).text.length;
+  const targetCharacter = clampCharacter(character, targetLineLength);
+  const targetRange = createCenteredCharacterRange(targetLine, targetCharacter);
 
-  editor.revealRange(
-    new vscode.Range(position, position),
-    vscode.TextEditorRevealType.InCenter
-  );
+  editor.revealRange(targetRange, vscode.TextEditorRevealType.InCenter);
 }
 
 function rememberTypewriterLine(editor: vscode.TextEditor | undefined): void {
@@ -126,6 +134,22 @@ function rememberTypewriterLine(editor: vscode.TextEditor | undefined): void {
 
 function clampLine(line: number, lineCount: number): number {
   return Math.max(0, Math.min(line, lineCount - 1));
+}
+
+function clampCharacter(character: number, lineLength: number): number {
+  return Math.max(0, Math.min(character, lineLength));
+}
+
+function createCenteredCharacterRange(
+  line: number,
+  character: number
+): vscode.Range {
+  return new vscode.Range(
+    line,
+    Math.max(0, character - HORIZONTAL_CENTER_PADDING_COLUMNS),
+    line,
+    character + HORIZONTAL_CENTER_PADDING_COLUMNS
+  );
 }
 
 async function toTop() {
@@ -154,6 +178,10 @@ async function toBottom() {
 
 function getCurrentLineNumber(): number | undefined {
   return vscode.window.activeTextEditor?.selection.start.line;
+}
+
+function getCurrentPosition(): vscode.Position | undefined {
+  return vscode.window.activeTextEditor?.selection.active;
 }
 
 export function deactivate() {}

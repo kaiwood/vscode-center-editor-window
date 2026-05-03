@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 const COMMAND = "center-editor-window.center";
 const LINE_COUNT = 300;
 const CURSOR_LINE = 240;
+const LONG_LINE_CHARACTER = 800;
 
 suite("Center Editor Window extension", () => {
   test("activates successfully", async () => {
@@ -33,6 +34,42 @@ suite("Center Editor Window extension", () => {
     );
 
     assertLineNearViewportCenter(editor, CURSOR_LINE);
+  });
+
+  test("centers the current character horizontally on long unwrapped lines", async () => {
+    const config = vscode.workspace.getConfiguration("editor");
+    const previousWordWrap = config.get<string>("wordWrap");
+    const editor = await openLongDocumentAtPosition(
+      new vscode.Position(CURSOR_LINE, LONG_LINE_CHARACTER),
+      (index) =>
+        index === CURSOR_LINE
+          ? "x".repeat(LONG_LINE_CHARACTER * 2)
+          : `Line ${index + 1}`
+    );
+
+    try {
+      await config.update("wordWrap", "off", vscode.ConfigurationTarget.Global);
+
+      await vscode.commands.executeCommand(COMMAND);
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportCenter(range, CURSOR_LINE)
+      );
+
+      assert.strictEqual(editor.selection.active.line, CURSOR_LINE);
+      assert.strictEqual(editor.selection.active.character, LONG_LINE_CHARACTER);
+
+      await assertCharacterAtWrappedLineColumnCenter(
+        editor,
+        CURSOR_LINE,
+        LONG_LINE_CHARACTER
+      );
+    } finally {
+      await config.update(
+        "wordWrap",
+        previousWordWrap,
+        vscode.ConfigurationTarget.Global
+      );
+    }
   });
 
   test("moves the current line through center, top, and bottom when three-state toggle is enabled", async () => {
@@ -211,15 +248,27 @@ async function openLongDocumentAtLine(
   line: number,
   initialVisibleLine = 0
 ): Promise<vscode.TextEditor> {
+  return openLongDocumentAtPosition(
+    new vscode.Position(line, 0),
+    undefined,
+    initialVisibleLine
+  );
+}
+
+async function openLongDocumentAtPosition(
+  position: vscode.Position,
+  lineFactory: ((index: number) => string) | undefined = undefined,
+  initialVisibleLine = 0
+): Promise<vscode.TextEditor> {
   const document = await vscode.workspace.openTextDocument({
-    content: Array.from({ length: LINE_COUNT }, (_, index) => `Line ${index + 1}`).join(
-      "\n"
-    ),
+    content: Array.from(
+      { length: LINE_COUNT },
+      (_, index) => lineFactory?.(index) ?? `Line ${index + 1}`
+    ).join("\n"),
     language: "plaintext"
   });
 
   const editor = await vscode.window.showTextDocument(document);
-  const position = new vscode.Position(line, 0);
   editor.selection = new vscode.Selection(position, position);
   editor.revealRange(
     new vscode.Range(initialVisibleLine, 0, initialVisibleLine, 0),
@@ -288,6 +337,33 @@ function assertLineNearViewportBottom(editor: vscode.TextEditor, line: number): 
   );
 }
 
+async function assertCharacterAtWrappedLineColumnCenter(
+  editor: vscode.TextEditor,
+  line: number,
+  character: number
+): Promise<void> {
+  const originalSelections = editor.selections;
+
+  try {
+    await vscode.commands.executeCommand("cursorMove", {
+      to: "wrappedLineColumnCenter"
+    });
+
+    const centerPosition = editor.selection.active;
+    assert.strictEqual(
+      centerPosition.line,
+      line,
+      `Expected wrapped-line center to stay on line ${line}, but it moved to ${centerPosition.line}.`
+    );
+    assert.ok(
+      Math.abs(centerPosition.character - character) <= 1,
+      `Expected character ${line}:${character} at wrapped-line center, but center was ${centerPosition.line}:${centerPosition.character}.`
+    );
+  } finally {
+    editor.selections = originalSelections;
+  }
+}
+
 function isLineNearViewportCenter(range: vscode.Range, line: number): boolean {
   const centerLine = range.start.line + viewportLineCount(range) / 2;
 
@@ -318,7 +394,7 @@ function tolerance(range: vscode.Range): number {
 }
 
 function formatRange(range: vscode.Range): string {
-  return `${range.start.line}-${range.end.line}`;
+  return `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}`;
 }
 
 function sleep(ms: number): Promise<void> {

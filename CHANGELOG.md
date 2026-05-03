@@ -7,6 +7,7 @@
 - Add VS Code extension integration tests.
 - Raise the minimum VS Code version to 1.74.
 - Add an opt-in typewriter scroll mode that keeps the current line centered whenever the cursor changes lines.
+- Center horizontally on long unwrapped lines.
 
 ## 2.3.0
 
