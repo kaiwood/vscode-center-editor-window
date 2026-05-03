@@ -46,6 +46,11 @@
             "type": "integer",
             "default": 0,
             "description": "Offset from the bottom when centering. A negative number will move the current line lower than the center."
+          },
+          "center-editor-window.typewriterScrollMode": {
+            "type": "boolean",
+            "default": false,
+            "description": "Keep the current line centered whenever the cursor changes lines."
           }
         }
       }

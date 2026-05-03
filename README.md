@@ -8,6 +8,7 @@ This extension centers your editor window at the current cursor position. Defaul
 
 - `center-editor-window.threeStateToggle`: toggle between centering the current line, moving it to the top of the viewport, and moving it to the bottom.
 - `center-editor-window.offset`: offset from the center target when centering.
+- `center-editor-window.typewriterScrollMode`: keep the current line centered whenever the cursor changes lines.
 
 ## Development
 

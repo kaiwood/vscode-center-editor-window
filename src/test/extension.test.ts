@@ -72,6 +72,124 @@ suite("Center Editor Window extension", () => {
     }
   });
 
+  test("does not typewriter-center cursor line changes when typewriter scroll mode is disabled", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousOffset = config.get<number>("offset");
+    const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
+
+    try {
+      await config.update(
+        "typewriterScrollMode",
+        false,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", 0, vscode.ConfigurationTarget.Global);
+
+      await vscode.commands.executeCommand("cursorDown");
+      await sleep(250);
+
+      assertLineNotNearViewportCenter(editor, CURSOR_LINE + 1);
+    } finally {
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test("keeps downward cursor line changes centered when typewriter scroll mode is enabled", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousOffset = config.get<number>("offset");
+    const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
+
+    try {
+      await config.update(
+        "typewriterScrollMode",
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", 0, vscode.ConfigurationTarget.Global);
+
+      await vscode.commands.executeCommand("cursorDown");
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportCenter(range, CURSOR_LINE + 1)
+      );
+
+      assertLineNearViewportCenter(editor, CURSOR_LINE + 1);
+    } finally {
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test("keeps upward cursor line changes centered when typewriter scroll mode is enabled", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousOffset = config.get<number>("offset");
+    const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
+
+    try {
+      await config.update(
+        "typewriterScrollMode",
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", 0, vscode.ConfigurationTarget.Global);
+
+      await vscode.commands.executeCommand("cursorUp");
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportCenter(range, CURSOR_LINE - 1)
+      );
+
+      assertLineNearViewportCenter(editor, CURSOR_LINE - 1);
+    } finally {
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test("keeps backspace line deletion centered when typewriter scroll mode is enabled", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousOffset = config.get<number>("offset");
+    const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
+
+    try {
+      await config.update(
+        "typewriterScrollMode",
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", 0, vscode.ConfigurationTarget.Global);
+
+      await vscode.commands.executeCommand("deleteLeft");
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportCenter(range, CURSOR_LINE - 1)
+      );
+
+      assertLineNearViewportCenter(editor, CURSOR_LINE - 1);
+    } finally {
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test("does not throw without an active editor", async () => {
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
 
@@ -85,10 +203,14 @@ suite("Center Editor Window extension", () => {
 
     assert.strictEqual(config.get<boolean>("threeStateToggle"), false);
     assert.strictEqual(config.get<number>("offset"), 0);
+    assert.strictEqual(config.get<boolean>("typewriterScrollMode"), false);
   });
 });
 
-async function openLongDocumentAtLine(line: number): Promise<vscode.TextEditor> {
+async function openLongDocumentAtLine(
+  line: number,
+  initialVisibleLine = 0
+): Promise<vscode.TextEditor> {
   const document = await vscode.workspace.openTextDocument({
     content: Array.from({ length: LINE_COUNT }, (_, index) => `Line ${index + 1}`).join(
       "\n"
@@ -99,7 +221,10 @@ async function openLongDocumentAtLine(line: number): Promise<vscode.TextEditor> 
   const editor = await vscode.window.showTextDocument(document);
   const position = new vscode.Position(line, 0);
   editor.selection = new vscode.Selection(position, position);
-  editor.revealRange(new vscode.Range(0, 0, 0, 0), vscode.TextEditorRevealType.AtTop);
+  editor.revealRange(
+    new vscode.Range(initialVisibleLine, 0, initialVisibleLine, 0),
+    vscode.TextEditorRevealType.AtTop
+  );
 
   return editor;
 }
@@ -127,6 +252,17 @@ function assertLineNearViewportCenter(editor: vscode.TextEditor, line: number): 
   assert.ok(
     isLineNearViewportCenter(range, line),
     `Expected line ${line} near viewport center, but visible range was ${formatRange(
+      range
+    )}.`
+  );
+}
+
+function assertLineNotNearViewportCenter(editor: vscode.TextEditor, line: number): void {
+  const range = getVisibleRange(editor);
+
+  assert.ok(
+    !isLineNearViewportCenter(range, line),
+    `Expected line ${line} away from viewport center, but visible range was ${formatRange(
       range
     )}.`
   );

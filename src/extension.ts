@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 
 type ToggleState = "center" | "top" | "bottom";
 
+const typewriterLineByEditor = new WeakMap<vscode.TextEditor, number>();
+
 export function activate(context: vscode.ExtensionContext) {
   let state: ToggleState = "center";
   let timeout: NodeJS.Timeout | undefined;
@@ -17,12 +19,19 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(() => {
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (timeout) {
         clearTimeout(timeout);
       }
       state = "center";
+      rememberTypewriterLine(editor);
     })
+  );
+
+  rememberTypewriterLine(vscode.window.activeTextEditor);
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeTextEditorSelection(maybeCenterTypewriterSelection)
   );
 
   const disposable = vscode.commands.registerCommand(
@@ -59,19 +68,64 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 }
 
+function maybeCenterTypewriterSelection(
+  event: vscode.TextEditorSelectionChangeEvent
+): void {
+  const activeLine = event.selections[0]?.active.line;
+
+  if (
+    event.textEditor !== vscode.window.activeTextEditor ||
+    activeLine === undefined ||
+    typewriterLineByEditor.get(event.textEditor) === activeLine ||
+    !vscode.workspace
+      .getConfiguration("center-editor-window")
+      .get("typewriterScrollMode")
+  ) {
+    rememberTypewriterLine(event.textEditor);
+    return;
+  }
+
+  typewriterLineByEditor.set(event.textEditor, activeLine);
+  centerLineInEditor(event.textEditor, activeLine);
+}
+
 async function toCenter() {
   const currentLineNumber = getCurrentLineNumber();
   if (currentLineNumber === undefined) {
     return;
   }
 
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return;
+  }
+
+  centerLineInEditor(editor, currentLineNumber);
+}
+
+function centerLineInEditor(editor: vscode.TextEditor, line: number): void {
   const offset = vscode.workspace
     .getConfiguration("center-editor-window")
     .get<number>("offset", 0);
-  await vscode.commands.executeCommand("revealLine", {
-    lineNumber: currentLineNumber + offset,
-    at: "center"
-  });
+  const targetLine = clampLine(line + offset, editor.document.lineCount);
+  const position = new vscode.Position(targetLine, 0);
+
+  editor.revealRange(
+    new vscode.Range(position, position),
+    vscode.TextEditorRevealType.InCenter
+  );
+}
+
+function rememberTypewriterLine(editor: vscode.TextEditor | undefined): void {
+  if (!editor) {
+    return;
+  }
+
+  typewriterLineByEditor.set(editor, editor.selection.active.line);
+}
+
+function clampLine(line: number, lineCount: number): number {
+  return Math.max(0, Math.min(line, lineCount - 1));
 }
 
 async function toTop() {
