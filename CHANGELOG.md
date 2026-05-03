@@ -26,7 +26,7 @@ Use looping gif for description
 
 Polishing release adding more metadata and images.
 
-Additionaly, some namespaces have changed, so we need to bump the major version because it might break custom set shortcuts.
+Additionally, some namespaces have changed, so we need to bump the major version because it might break custom set shortcuts.
 
 ## 1.0.0
 
