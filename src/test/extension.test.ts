@@ -7,6 +7,7 @@ const COMMAND = "center-editor-window.center";
 const LINE_COUNT = 300;
 const CURSOR_LINE = 240;
 const LONG_LINE_CHARACTER = 800;
+const TYPEWRITER_POSITION_SETTING = "typewriterScrollModePosition";
 
 suite("Center Editor Window extension", () => {
   test("activates successfully", async () => {
@@ -150,6 +151,9 @@ suite("Center Editor Window extension", () => {
   test("keeps downward cursor line changes centered when typewriter scroll mode is enabled", async () => {
     const config = vscode.workspace.getConfiguration("center-editor-window");
     const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousTypewriterScrollModePosition = config.get<string>(
+      TYPEWRITER_POSITION_SETTING
+    );
     const previousOffset = config.get<number>("offset");
     const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
 
@@ -157,6 +161,11 @@ suite("Center Editor Window extension", () => {
       await config.update(
         "typewriterScrollMode",
         true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        "center",
         vscode.ConfigurationTarget.Global
       );
       await config.update("offset", 0, vscode.ConfigurationTarget.Global);
@@ -173,6 +182,99 @@ suite("Center Editor Window extension", () => {
         previousTypewriterScrollMode,
         vscode.ConfigurationTarget.Global
       );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        previousTypewriterScrollModePosition,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test("keeps downward cursor line changes near the top when typewriter scroll mode position is top", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousTypewriterScrollModePosition = config.get<string>(
+      TYPEWRITER_POSITION_SETTING
+    );
+    const previousOffset = config.get<number>("offset");
+    const offset = 3;
+    const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
+
+    try {
+      await config.update(
+        "typewriterScrollMode",
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        "top",
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", offset, vscode.ConfigurationTarget.Global);
+
+      await vscode.commands.executeCommand("cursorDown");
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportTop(range, CURSOR_LINE + 1 - offset)
+      );
+
+      assertLineNearViewportTop(editor, CURSOR_LINE + 1 - offset);
+    } finally {
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        previousTypewriterScrollModePosition,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test("keeps downward cursor line changes near the bottom when typewriter scroll mode position is bottom", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousTypewriterScrollModePosition = config.get<string>(
+      TYPEWRITER_POSITION_SETTING
+    );
+    const previousOffset = config.get<number>("offset");
+    const offset = 3;
+    const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
+
+    try {
+      await config.update(
+        "typewriterScrollMode",
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        "bottom",
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", offset, vscode.ConfigurationTarget.Global);
+
+      await vscode.commands.executeCommand("cursorDown");
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportBottom(range, CURSOR_LINE + 1 + offset)
+      );
+
+      assertLineNearViewportBottom(editor, CURSOR_LINE + 1 + offset);
+    } finally {
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        previousTypewriterScrollModePosition,
+        vscode.ConfigurationTarget.Global
+      );
       await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
     }
   });
@@ -180,6 +282,9 @@ suite("Center Editor Window extension", () => {
   test("keeps upward cursor line changes centered when typewriter scroll mode is enabled", async () => {
     const config = vscode.workspace.getConfiguration("center-editor-window");
     const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousTypewriterScrollModePosition = config.get<string>(
+      TYPEWRITER_POSITION_SETTING
+    );
     const previousOffset = config.get<number>("offset");
     const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
 
@@ -187,6 +292,11 @@ suite("Center Editor Window extension", () => {
       await config.update(
         "typewriterScrollMode",
         true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        "center",
         vscode.ConfigurationTarget.Global
       );
       await config.update("offset", 0, vscode.ConfigurationTarget.Global);
@@ -203,6 +313,11 @@ suite("Center Editor Window extension", () => {
         previousTypewriterScrollMode,
         vscode.ConfigurationTarget.Global
       );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        previousTypewriterScrollModePosition,
+        vscode.ConfigurationTarget.Global
+      );
       await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
     }
   });
@@ -210,6 +325,9 @@ suite("Center Editor Window extension", () => {
   test("keeps backspace line deletion centered when typewriter scroll mode is enabled", async () => {
     const config = vscode.workspace.getConfiguration("center-editor-window");
     const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousTypewriterScrollModePosition = config.get<string>(
+      TYPEWRITER_POSITION_SETTING
+    );
     const previousOffset = config.get<number>("offset");
     const editor = await openLongDocumentAtLine(CURSOR_LINE, CURSOR_LINE - 4);
 
@@ -217,6 +335,11 @@ suite("Center Editor Window extension", () => {
       await config.update(
         "typewriterScrollMode",
         true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        "center",
         vscode.ConfigurationTarget.Global
       );
       await config.update("offset", 0, vscode.ConfigurationTarget.Global);
@@ -231,6 +354,11 @@ suite("Center Editor Window extension", () => {
       await config.update(
         "typewriterScrollMode",
         previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        previousTypewriterScrollModePosition,
         vscode.ConfigurationTarget.Global
       );
       await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
@@ -379,6 +507,7 @@ suite("Center Editor Window extension", () => {
     assert.strictEqual(config.get<boolean>("threeStateToggle"), false);
     assert.strictEqual(config.get<number>("offset"), 0);
     assert.strictEqual(config.get<boolean>("typewriterScrollMode"), false);
+    assert.strictEqual(config.get<string>(TYPEWRITER_POSITION_SETTING), "center");
     assert.strictEqual(config.get<boolean>("centerOnUndoRedo"), false);
   });
 });

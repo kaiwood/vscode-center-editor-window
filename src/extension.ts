@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
-type ToggleState = "center" | "top" | "bottom";
+type ViewportPosition = "center" | "top" | "bottom";
+type ToggleState = ViewportPosition;
 
 const typewriterLineByEditor = new WeakMap<vscode.TextEditor, number>();
 const HORIZONTAL_CENTER_PADDING_COLUMNS = 120;
@@ -88,10 +89,11 @@ function maybeCenterUndoRedoChange(event: vscode.TextDocumentChangeEvent): void 
     return;
   }
 
-  centerLineInEditor(
+  void revealLineInEditor(
     editor,
     editor.selection.active.line,
-    editor.selection.active.character
+    editor.selection.active.character,
+    "center"
   );
 }
 
@@ -114,10 +116,11 @@ function maybeCenterTypewriterSelection(
   }
 
   typewriterLineByEditor.set(event.textEditor, activeLine);
-  centerLineInEditor(
+  void revealLineInEditor(
     event.textEditor,
     activeLine,
-    event.selections[0].active.character
+    event.selections[0].active.character,
+    getTypewriterScrollModePosition()
   );
 }
 
@@ -132,23 +135,78 @@ async function toCenter() {
     return;
   }
 
-  centerLineInEditor(editor, currentPosition.line, currentPosition.character);
+  await revealLineInEditor(
+    editor,
+    currentPosition.line,
+    currentPosition.character,
+    "center"
+  );
 }
 
-function centerLineInEditor(
+async function revealLineInEditor(
+  editor: vscode.TextEditor,
+  line: number,
+  character: number,
+  position: ViewportPosition
+): Promise<void> {
+  switch (position) {
+    case "center":
+      revealRangeInEditor(editor, line + getOffset(), character, position);
+      break;
+    case "top":
+      revealRangeInEditor(editor, line - getOffset(), character, position);
+      break;
+    case "bottom":
+      await revealLineAtBottom(editor, line + getOffset(), character);
+      break;
+  }
+}
+
+function revealRangeInEditor(
+  editor: vscode.TextEditor,
+  line: number,
+  character: number,
+  position: Exclude<ViewportPosition, "bottom">
+): void {
+  const targetLine = clampLine(line, editor.document.lineCount);
+  const targetLineLength = editor.document.lineAt(targetLine).text.length;
+  const targetCharacter = clampCharacter(character, targetLineLength);
+  const targetRange = createCenteredCharacterRange(targetLine, targetCharacter);
+  const revealType =
+    position === "top"
+      ? vscode.TextEditorRevealType.AtTop
+      : vscode.TextEditorRevealType.InCenter;
+
+  editor.revealRange(targetRange, revealType);
+}
+
+async function revealLineAtBottom(
   editor: vscode.TextEditor,
   line: number,
   character: number
-): void {
-  const offset = vscode.workspace
-    .getConfiguration("center-editor-window")
-    .get<number>("offset", 0);
-  const targetLine = clampLine(line + offset, editor.document.lineCount);
+): Promise<void> {
+  const targetLine = clampLine(line, editor.document.lineCount);
   const targetLineLength = editor.document.lineAt(targetLine).text.length;
   const targetCharacter = clampCharacter(character, targetLineLength);
   const targetRange = createCenteredCharacterRange(targetLine, targetCharacter);
 
-  editor.revealRange(targetRange, vscode.TextEditorRevealType.InCenter);
+  await vscode.commands.executeCommand("revealLine", {
+    lineNumber: targetLine,
+    at: "bottom"
+  });
+  editor.revealRange(targetRange, vscode.TextEditorRevealType.Default);
+}
+
+function getOffset(): number {
+  return vscode.workspace
+    .getConfiguration("center-editor-window")
+    .get<number>("offset", 0);
+}
+
+function getTypewriterScrollModePosition(): ViewportPosition {
+  return vscode.workspace
+    .getConfiguration("center-editor-window")
+    .get<ViewportPosition>("typewriterScrollModePosition", "center");
 }
 
 function rememberTypewriterLine(editor: vscode.TextEditor | undefined): void {

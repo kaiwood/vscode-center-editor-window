@@ -53,7 +53,17 @@
           "center-editor-window.typewriterScrollMode": {
             "type": "boolean",
             "default": false,
-            "description": "Keep the current line centered whenever the cursor changes lines."
+            "description": "Keep the current line positioned in the viewport whenever the cursor changes lines."
+          },
+          "center-editor-window.typewriterScrollModePosition": {
+            "type": "string",
+            "enum": [
+              "top",
+              "center",
+              "bottom"
+            ],
+            "default": "center",
+            "description": "Position of the current line when Typewriter Scroll Mode recenters the editor."
           },
           "center-editor-window.centerOnUndoRedo": {
             "type": "boolean",
