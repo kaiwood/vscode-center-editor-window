@@ -1,5 +1,11 @@
 # Release Notes
 
+## 3.1.0
+
+- Ignore mouse selection changes while Typewriter Scroll Mode is enabled.
+- Add `center-editor-window.typewriterScrollModePosition` to keep the current line near the top, center, or bottom.
+- Add `center-editor-window.typewriterScrollModeSmooth` to avoid recentering until the current line moves away from the configured viewport position.
+
 ## 3.0.0
 
 - Modernize the extension build, test, and packaging tooling.
