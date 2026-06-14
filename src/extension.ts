@@ -103,6 +103,7 @@ function maybeCenterTypewriterSelection(
   if (
     event.textEditor !== vscode.window.activeTextEditor ||
     activeLine === undefined ||
+    event.kind === vscode.TextEditorSelectionChangeKind.Mouse ||
     typewriterLineByEditor.get(event.textEditor) === activeLine ||
     !vscode.workspace
       .getConfiguration("center-editor-window")
