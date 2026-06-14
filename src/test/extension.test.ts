@@ -8,6 +8,7 @@ const LINE_COUNT = 300;
 const CURSOR_LINE = 240;
 const LONG_LINE_CHARACTER = 800;
 const TYPEWRITER_POSITION_SETTING = "typewriterScrollModePosition";
+const TYPEWRITER_SMOOTH_SETTING = "typewriterScrollModeSmooth";
 
 suite("Center Editor Window extension", () => {
   test("activates successfully", async () => {
@@ -185,6 +186,69 @@ suite("Center Editor Window extension", () => {
       await config.update(
         TYPEWRITER_POSITION_SETTING,
         previousTypewriterScrollModePosition,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
+    }
+  });
+
+  test("does not recenter small cursor line changes when smooth typewriter scroll mode is enabled", async () => {
+    const config = vscode.workspace.getConfiguration("center-editor-window");
+    const previousTypewriterScrollMode = config.get<boolean>("typewriterScrollMode");
+    const previousTypewriterScrollModePosition = config.get<string>(
+      TYPEWRITER_POSITION_SETTING
+    );
+    const previousTypewriterScrollModeSmooth = config.get<boolean>(
+      TYPEWRITER_SMOOTH_SETTING
+    );
+    const previousOffset = config.get<number>("offset");
+    const editor = await openLongDocumentAtLine(CURSOR_LINE);
+
+    try {
+      await config.update(
+        "typewriterScrollMode",
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        "center",
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_SMOOTH_SETTING,
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update("offset", 0, vscode.ConfigurationTarget.Global);
+
+      await vscode.commands.executeCommand(COMMAND);
+      await waitForVisibleRange(editor, (range) =>
+        isLineNearViewportCenter(range, CURSOR_LINE)
+      );
+      const visibleRangeBefore = getVisibleRange(editor);
+
+      await vscode.commands.executeCommand("cursorDown");
+      await sleep(250);
+
+      assert.strictEqual(
+        getVisibleRange(editor).start.line,
+        visibleRangeBefore.start.line
+      );
+    } finally {
+      await config.update(
+        "typewriterScrollMode",
+        previousTypewriterScrollMode,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_POSITION_SETTING,
+        previousTypewriterScrollModePosition,
+        vscode.ConfigurationTarget.Global
+      );
+      await config.update(
+        TYPEWRITER_SMOOTH_SETTING,
+        previousTypewriterScrollModeSmooth,
         vscode.ConfigurationTarget.Global
       );
       await config.update("offset", previousOffset, vscode.ConfigurationTarget.Global);
@@ -508,6 +572,7 @@ suite("Center Editor Window extension", () => {
     assert.strictEqual(config.get<number>("offset"), 0);
     assert.strictEqual(config.get<boolean>("typewriterScrollMode"), false);
     assert.strictEqual(config.get<string>(TYPEWRITER_POSITION_SETTING), "center");
+    assert.strictEqual(config.get<boolean>(TYPEWRITER_SMOOTH_SETTING), false);
     assert.strictEqual(config.get<boolean>("centerOnUndoRedo"), false);
   });
 });

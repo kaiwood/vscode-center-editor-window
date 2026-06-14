@@ -5,6 +5,8 @@ type ToggleState = ViewportPosition;
 
 const typewriterLineByEditor = new WeakMap<vscode.TextEditor, number>();
 const HORIZONTAL_CENTER_PADDING_COLUMNS = 120;
+const TYPEWRITER_SMOOTH_SCROLL_TOLERANCE_RATIO = 0.15;
+const TYPEWRITER_SMOOTH_SCROLL_MIN_TOLERANCE_LINES = 2;
 
 export function activate(context: vscode.ExtensionContext) {
   let state: ToggleState = "center";
@@ -115,12 +117,21 @@ function maybeCenterTypewriterSelection(
     return;
   }
 
+  const position = getTypewriterScrollModePosition();
+
   typewriterLineByEditor.set(event.textEditor, activeLine);
+  if (
+    getTypewriterScrollModeSmooth() &&
+    isLineNearTypewriterPosition(event.textEditor, activeLine, position)
+  ) {
+    return;
+  }
+
   void revealLineInEditor(
     event.textEditor,
     activeLine,
     event.selections[0].active.character,
-    getTypewriterScrollModePosition()
+    position
   );
 }
 
@@ -207,6 +218,68 @@ function getTypewriterScrollModePosition(): ViewportPosition {
   return vscode.workspace
     .getConfiguration("center-editor-window")
     .get<ViewportPosition>("typewriterScrollModePosition", "center");
+}
+
+function getTypewriterScrollModeSmooth(): boolean {
+  return vscode.workspace
+    .getConfiguration("center-editor-window")
+    .get<boolean>("typewriterScrollModeSmooth", false);
+}
+
+function isLineNearTypewriterPosition(
+  editor: vscode.TextEditor,
+  line: number,
+  position: ViewportPosition
+): boolean {
+  const range = editor.visibleRanges[0];
+  if (!range) {
+    return false;
+  }
+
+  const targetLine = getTypewriterTargetLine(editor, line, position);
+  const viewportLine = getViewportLineForPosition(range, position);
+
+  return Math.abs(targetLine - viewportLine) <= getSmoothScrollTolerance(range);
+}
+
+function getTypewriterTargetLine(
+  editor: vscode.TextEditor,
+  line: number,
+  position: ViewportPosition
+): number {
+  switch (position) {
+    case "center":
+      return clampLine(line + getOffset(), editor.document.lineCount);
+    case "top":
+      return clampLine(line - getOffset(), editor.document.lineCount);
+    case "bottom":
+      return clampLine(line + getOffset(), editor.document.lineCount);
+  }
+}
+
+function getViewportLineForPosition(
+  range: vscode.Range,
+  position: ViewportPosition
+): number {
+  switch (position) {
+    case "center":
+      return range.start.line + getViewportLineCount(range) / 2;
+    case "top":
+      return range.start.line;
+    case "bottom":
+      return range.end.line;
+  }
+}
+
+function getSmoothScrollTolerance(range: vscode.Range): number {
+  return Math.max(
+    TYPEWRITER_SMOOTH_SCROLL_MIN_TOLERANCE_LINES,
+    Math.ceil(getViewportLineCount(range) * TYPEWRITER_SMOOTH_SCROLL_TOLERANCE_RATIO)
+  );
+}
+
+function getViewportLineCount(range: vscode.Range): number {
+  return range.end.line - range.start.line;
 }
 
 function rememberTypewriterLine(editor: vscode.TextEditor | undefined): void {

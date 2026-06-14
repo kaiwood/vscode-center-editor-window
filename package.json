@@ -65,6 +65,11 @@
             "default": "center",
             "description": "Position of the current line when Typewriter Scroll Mode recenters the editor."
           },
+          "center-editor-window.typewriterScrollModeSmooth": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only recenter Typewriter Scroll Mode when the current line moves away from the configured viewport position."
+          },
           "center-editor-window.centerOnUndoRedo": {
             "type": "boolean",
             "default": false,
